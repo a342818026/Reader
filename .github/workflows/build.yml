@@ -1,0 +1,35 @@
+name: Build Reader
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build (Release x86)
+        run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x86
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reader-x86-Release
+          path: Release/Reader.exe
+
+      - name: Build (Release x64)
+        run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x64
+
+      - name: Upload x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reader-x64-Release
+          path: x64/Release/Reader.exe
