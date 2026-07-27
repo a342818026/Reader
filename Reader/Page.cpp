@@ -209,6 +209,9 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
     m_DrawType = DRAW_NULL;
     m_LineCount = 0;
 
+    // Track inline image index across the entire text
+    int img_idx = 0;
+
     y = TOP_MIN;
     for (i = 0; i < m_PageInfo.lines.used; i++)
     {
@@ -217,6 +220,43 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
         for (j = 0; j < p_line->char_cnt; j++)
         {
             p_char = &p_line->chars[j];
+            int ch_idx = p_char->idx;
+            
+            // Check for inline image marker
+            if (ch_idx >= 0 && ch_idx < m_Length && m_Text[ch_idx] == (wchar_t)IMAGE_MARKER)
+            {
+                // This character is an image marker - draw the image
+                Gdiplus::Bitmap *bmp = NULL;
+                int img_w = 0, img_h = 0;
+                if (GetInlineImage(img_idx, &bmp, &img_w, &img_h) && bmp)
+                {
+                    // Skip very small images (bookmark icons, decorative elements)
+                    if (img_w >= 32 && img_h >= 32)
+                    {
+                        int content_w = (rc->right - rc->left) - LEFT_MIN - RIGHT_MIN;
+                        // Scale to fit content width with some margin (85%)
+                        int max_draw_w = content_w * 85 / 100;
+                        int draw_w = img_w;
+                        int draw_h = img_h;
+                        if (draw_w > max_draw_w)
+                        {
+                            draw_h = draw_h * max_draw_w / draw_w;
+                            draw_w = max_draw_w;
+                        }
+                        // Center the image horizontally
+                        int img_x = LEFT_MIN + (content_w - draw_w) / 2;
+                        Gdiplus::Graphics graphics(hdc);
+                        graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+                        graphics.DrawImage(bmp, img_x, y, draw_w, draw_h);
+                        y += draw_h + 8; // advance past the image + margin
+                    }
+                    // Skip marker character advance - we handled it with image
+                    continue;
+                }
+                img_idx++; // count this marker even if no image was drawn
+                // Fall through to draw the marker as a space-like character
+            }
+            
             if (enable_alpha)
             {
                 DrawAlphaText(hdc, p_char, x, y, p_line->cy, &alpha_dc);
