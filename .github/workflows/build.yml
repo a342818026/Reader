@@ -8,13 +8,15 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2019  # VS2019 with v142 toolset
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '16.0'  # VS 2019
 
       - name: Build (Release x86)
         run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x86
