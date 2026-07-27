@@ -4,6 +4,8 @@
 #include <vector>
 #include "types.h"
 
+#define IMAGE_MARKER 0xFFFC    // marker character for inline images in text buffer
+
 typedef struct char_info_t
 {
     int idx;
@@ -129,6 +131,7 @@ protected:
     virtual BOOL IsChapterIndex(int index) = 0;
     virtual BOOL IsChapter(int index) = 0;
     virtual BOOL GetChapterInfo(int type, int *start, int *length) = 0; // type=0 curn chapter, type=1 next chapter, type=-1, prev chapter
+    virtual BOOL GetInlineImage(int img_idx, Gdiplus::Bitmap **bmp, int *w, int *h) { return FALSE; }
 
 protected:
     wchar_t* m_Text;
