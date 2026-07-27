@@ -6,6 +6,13 @@
 #include <map>
 #include <vector>
 
+typedef struct epub_image_t
+{
+    std::string path;          // path inside EPUB
+    int display_w;              // display width
+    int display_h;              // display height
+} epub_image_t;
+
 typedef struct epub_t
 {
     std::string path;
@@ -28,6 +35,10 @@ public:
     virtual book_type_t GetBookType(void);
     virtual BOOL SaveBook(HWND hWnd);
     virtual BOOL UpdateChapters(int offset);
+    int GetImageCount(void) { return (int)m_Images.size(); }
+    epub_image_t* GetImage(int index) { return (index >= 0 && index < (int)m_Images.size()) ? &m_Images[index] : NULL; }
+    Gdiplus::Bitmap* DecodeImage(int index);
+    virtual BOOL GetInlineImage(int img_idx, Gdiplus::Bitmap **bmp, int *w, int *h);
 
 protected:
     virtual BOOL ParserBook(HWND hWnd);
@@ -41,10 +52,14 @@ protected:
     BOOL ParserOps(file_data_t *fdata, wchar_t **text, int *len, wchar_t **title, int *tlen, BOOL parsertitle);
     BOOL ParserChapters(epub_t &epub);
     BOOL ParserCover(epub_t &epub);
+    BOOL WalkBodyNodes(xmlNode *node, wchar_t **text, int *len, int img_start_idx = -1, const char *chapter_path = NULL);
+    static void AppendText(wchar_t **text, int *len, const wchar_t *src, int srclen);
 
 protected:
     Gdiplus::Bitmap *m_Cover;
     filelist_t m_flist;
+    std::string m_EpubPath;
+    std::vector<epub_image_t> m_Images;
 };
 
 #endif
