@@ -337,6 +337,7 @@ BOOL EpubBook::ParserOcf(epub_t &epub)
             if (epub.opf.find('/'))
             {
                 epub.path = epub.opf.substr(0, epub.opf.rfind('/') + 1);
+                m_EpubPath = epub.path;
             }
             ret = TRUE;
             xmlFree(keyword);
@@ -671,6 +672,93 @@ end:
     return ret;
 }
 
+// Append wide text to buffer, reallocating as needed
+void EpubBook::AppendText(wchar_t **text, int *len, const wchar_t *src, int srclen)
+{
+    if (!src || srclen <= 0) return;
+    wchar_t *p = (wchar_t*)realloc(*text, (*len + srclen + 1) * sizeof(wchar_t));
+    if (!p) return;
+    memcpy(p + *len, src, srclen * sizeof(wchar_t));
+    *text = p;
+    *len += srclen;
+    (*text)[*len] = L'\0';
+}
+
+// Recursively walk HTML DOM nodes to extract text and detect <img> elements.
+// For each <img> inserts IMAGE_MARKER (0xFFFC) into the text and records the image path.
+BOOL EpubBook::WalkBodyNodes(xmlNode *node, wchar_t **text, int *len)
+{
+    BOOL ok = TRUE;
+    for (xmlNode *cur = node; cur; cur = cur->next)
+    {
+        if (m_bForceKill)
+            return FALSE;
+        if (cur->type == XML_TEXT_NODE && cur->content)
+        {
+            wchar_t *decoded = NULL;
+            int decoded_len = 0;
+            const char *src = (const char*)cur->content;
+            int srcsize = (int)strlen(src);
+            if (!DecodeText(src, srcsize, &decoded, &decoded_len))
+            {
+                ok = FALSE;
+            }
+            else if (decoded && decoded_len > 0)
+            {
+                AppendText(text, len, decoded, decoded_len);
+                free(decoded);
+            }
+        }
+        else if (cur->type == XML_ELEMENT_NODE)
+        {
+            const char *tag = (const char*)cur->name;
+            if (strcmp(tag, "img") == 0)
+            {
+                xmlChar *src = xmlGetProp(cur, (const xmlChar*)"src");
+                if (src)
+                {
+                    // Insert marker character
+                    wchar_t marker = (wchar_t)IMAGE_MARKER;
+                    AppendText(text, len, &marker, 1);
+                    // Record image path
+                    epub_image_t img;
+                    img.path = (const char*)src;
+                    img.display_w = 0;
+                    img.display_h = 0;
+                    m_Images.push_back(img);
+                    xmlFree(src);
+                }
+            }
+            else if (strcmp(tag, "br") == 0)
+            {
+                wchar_t nl = L'\n';
+                AppendText(text, len, &nl, 1);
+            }
+            else
+            {
+                // Recurse into children
+                if (cur->children)
+                {
+                    if (!WalkBodyNodes(cur->children, text, len))
+                        ok = FALSE;
+                }
+                // Add newline after block-level elements
+                const char *block_tags[] = {"p","div","h1","h2","h3","h4","h5","h6","blockquote","li","pre","hr",NULL};
+                for (int b = 0; block_tags[b]; b++)
+                {
+                    if (strcmp(tag, block_tags[b]) == 0)
+                    {
+                        wchar_t nl = L'\n';
+                        AppendText(text, len, &nl, 1);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return ok;
+}
+
 BOOL EpubBook::ParserOps(file_data_t *fdata, wchar_t **text, int *len, wchar_t **title, int *tlen, BOOL parsertitle)
 {
     filelist_t::iterator itor;
@@ -751,7 +839,7 @@ body:
     if (xpathobj)
         xmlXPathFreeObject(xpathobj);
     {
-        // parser body
+        // parser body + extract images
         xpath = BAD_CAST("//*[local-name()='body']");
         xpathobj = xmlXPathEvalExpression(xpath, xpathctx);
         if (!xpathobj)
@@ -763,14 +851,8 @@ body:
         nodeset = xpathobj->nodesetval;
         for (i = 0; i < nodeset->nodeNr; i++)
         {
-            value = xmlNodeGetContent(nodeset->nodeTab[i]);
-
-            if (!DecodeText((const char *)value, (int)strlen((const char *)value), text, len))
-                ret = FALSE;
-            else
-                ret = TRUE;
-
-            xmlFree(value);
+            // Walk body children recursively to extract text + images
+            ret = WalkBodyNodes(nodeset->nodeTab[i], text, len);
             break;
         }
     }
@@ -1048,4 +1130,47 @@ _complete:
     }
 
     return m_Cover != NULL;
+}
+
+Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
+{
+    if (index < 0 || index >= (int)m_Images.size())
+        return NULL;
+    epub_image_t &img = m_Images[index];
+    if (img.path.empty())
+        return NULL;
+
+    IStream *pStream = NULL;
+    filelist_t::iterator it = m_flist.find(m_EpubPath + img.path);
+    if (it == m_flist.end())
+        return NULL;
+    file_data_t *fdata = &(it->second);
+    pStream = SHCreateMemStream((const BYTE *)fdata->data, fdata->size);
+    if (!pStream)
+        return NULL;
+    Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(pStream);
+    if (!bmp || Gdiplus::Ok != bmp->GetLastStatus())
+    {
+        delete bmp;
+        pStream->Release();
+        return NULL;
+    }
+    img.display_w = bmp->GetWidth();
+    img.display_h = bmp->GetHeight();
+    pStream->Release();
+    return bmp;
+}
+
+BOOL EpubBook::GetInlineImage(int img_idx, Gdiplus::Bitmap **bmp, int *w, int *h)
+{
+    if (img_idx < 0 || img_idx >= (int)m_Images.size())
+        return FALSE;
+    epub_image_t &img = m_Images[img_idx];
+    Gdiplus::Bitmap *bitmap = DecodeImage(img_idx);
+    if (!bitmap)
+        return FALSE;
+    *bmp = bitmap;
+    *w = img.display_w;
+    *h = img.display_h;
+    return TRUE;
 }
