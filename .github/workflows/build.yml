@@ -49,10 +49,11 @@ jobs:
           .\vcpkg.exe install zlib:x86-windows-static libxml2:x86-windows-static --x-install-root="$env:TEMP\vcpkg_inst_x86"
           # Clone libmobi source
           git clone --depth 1 https://github.com/bfabiszewski/libmobi.git "$env:TEMP\libmobi-src"
-          # Build libmobi with cmake (x86)
+          # Build libmobi static library only (skip tools which need POSIX getopt)
           cmake -S "$env:TEMP\libmobi-src" -B "$env:TEMP\libmobi-build-x86" `
             -A Win32 `
             -DCMAKE_BUILD_TYPE=Release `
+            -DBUILD_SHARED_LIBS=OFF `
             -DCMAKE_TOOLCHAIN_FILE="$env:TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x86-windows-static `
             -DVCPKG_INSTALLED_DIR="$env:TEMP\vcpkg_inst_x86" `
@@ -60,8 +61,10 @@ jobs:
             -DZLIB_LIBRARY="$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zlib.lib" `
             -DLIBXML2_INCLUDE_DIR="$env:TEMP\vcpkg_inst_x86\x86-windows-static\include" `
             -DLIBXML2_LIBRARY="$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\libxml2.lib"
-          cmake --build "$env:TEMP\libmobi-build-x86" --config Release
-          Copy-Item "$env:TEMP\libmobi-build-x86\Release\mobi.lib" "opensrc\libmobi\lib\libmobi.lib" -Force
+          cmake --build "$env:TEMP\libmobi-build-x86" --config Release --target mobi
+          Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi*.lib" | Select-Object FullName
+          $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi.lib" | Select-Object -First 1
+          Copy-Item $mobilib.FullName "opensrc\libmobi\lib\libmobi.lib" -Force
           Copy-Item "$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zlib.lib" "opensrc\zlib\lib\zlibstat.lib" -Force
           Write-Host "x86 libs replaced"
 
@@ -73,6 +76,7 @@ jobs:
           cmake -S "$env:TEMP\libmobi-src" -B "$env:TEMP\libmobi-build-x64" `
             -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
+            -DBUILD_SHARED_LIBS=OFF `
             -DCMAKE_TOOLCHAIN_FILE="$env:TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DVCPKG_INSTALLED_DIR="$env:TEMP\vcpkg_inst_x64" `
@@ -80,8 +84,9 @@ jobs:
             -DZLIB_LIBRARY="$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib" `
             -DLIBXML2_INCLUDE_DIR="$env:TEMP\vcpkg_inst_x64\x64-windows-static\include" `
             -DLIBXML2_LIBRARY="$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\libxml2.lib"
-          cmake --build "$env:TEMP\libmobi-build-x64" --config Release
-          Copy-Item "$env:TEMP\libmobi-build-x64\Release\mobi.lib" "opensrc\libmobi\lib\x64\libmobi.lib" -Force
+          cmake --build "$env:TEMP\libmobi-build-x64" --config Release --target mobi
+          $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x64" -Recurse -Filter "mobi.lib" | Select-Object -First 1
+          Copy-Item $mobilib.FullName "opensrc\libmobi\lib\x64\libmobi.lib" -Force
           Copy-Item "$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib" "opensrc\zlib\lib\x64\zlibstat.lib" -Force
           Write-Host "x64 libs replaced"
 
