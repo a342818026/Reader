@@ -9,16 +9,18 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add MSBuild to PATH
+      - name: Add MSBuild (VS2019)
         uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '[16.0,17.0)'  # prefer VS2019 (v142 toolset)
 
       - name: Build (Release x86)
-        run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0
+        run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v142
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -27,7 +29,7 @@ jobs:
           path: Release/Reader.exe
 
       - name: Build (Release x64)
-        run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0
+        run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v142
 
       - name: Upload x64 artifact
         uses: actions/upload-artifact@v4
