@@ -209,8 +209,16 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
     m_DrawType = DRAW_NULL;
     m_LineCount = 0;
 
-    // Track inline image index across the entire text
+    // Track inline image index across the entire text:
+    // count markers from text start to current page start, so pages
+    // after the first get the correct global image index.
     int img_idx = 0;
+    int start_pos = (m_PageInfo.start < m_Length) ? m_PageInfo.start : m_Length;
+    for (int k = 0; k < start_pos; k++)
+    {
+        if (m_Text[k] == (wchar_t)IMAGE_MARKER)
+            img_idx++;
+    }
 
     y = TOP_MIN;
     for (i = 0; i < m_PageInfo.lines.used; i++)
@@ -250,6 +258,7 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
                         graphics.DrawImage(bmp, img_x, y, draw_w, draw_h);
                         y += draw_h + 8; // advance past the image + margin
                     }
+                    img_idx++; // advance image index regardless of whether drawn
                     // Skip marker character advance - we handled it with image
                     continue;
                 }
