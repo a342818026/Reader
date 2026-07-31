@@ -14,22 +14,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install VS2019 Build Tools base
+      - name: Install VS2019 Build Tools (v142)
         shell: powershell
         run: |
-          choco install visualstudio2019buildtools --yes --no-progress
-
-      - name: Add VS2019 VCTools workload (v142)
-        shell: powershell
-        run: |
-          $installer = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
-          & $installer modify `
-            --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools" `
-            --add Microsoft.VisualStudio.Workload.VCTools `
-            --add Microsoft.VisualStudio.Component.VC.v142.x86.x64 `
-            --add Microsoft.VisualStudio.Component.Windows10SDK.17763 `
-            --quiet --wait --norestart
-          exit $LASTEXITCODE
+          $bootstrapper = "$env:TEMP\vs_buildtools.exe"
+          Invoke-WebRequest -Uri "https://aka.ms/vs/16/release/vs_buildtools.exe" -OutFile $bootstrapper
+          $args = @(
+            '--quiet', '--wait', '--norestart',
+            '--add', 'Microsoft.VisualStudio.Workload.VCTools',
+            '--add', 'Microsoft.VisualStudio.Component.VC.v142.x86.x64',
+            '--add', 'Microsoft.VisualStudio.Component.Windows10SDK.17763',
+            '--includeRecommended'
+          )
+          $p = Start-Process -FilePath $bootstrapper -ArgumentList $args -Wait -PassThru
+          if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) {
+            Write-Error "VS2019 install failed with exit code $($p.ExitCode)"
+            exit $p.ExitCode
+          }
+          Write-Host "VS2019 Build Tools installed OK"
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
