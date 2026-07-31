@@ -59,7 +59,9 @@ protected:
     Gdiplus::Bitmap *m_Cover;
     filelist_t m_flist;
     std::string m_EpubPath;
+    std::string m_CurChapterPath;   // dir of current chapter, relative to epub root (e.g. "Text/")
     std::vector<epub_image_t> m_Images;
+    std::vector<Gdiplus::Bitmap*> m_ImageCache;
 };
 
 #endif
