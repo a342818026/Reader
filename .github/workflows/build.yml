@@ -33,6 +33,54 @@ jobs:
           }
           Write-Host "VS2019 Build Tools installed OK"
 
+      - name: Setup vcpkg
+        shell: powershell
+        run: |
+          cd "$env:TEMP"
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat -disableMetrics
+          Write-Host "vcpkg bootstrapped"
+
+      - name: Build zlib + libmobi (x86)
+        shell: powershell
+        run: |
+          cd "$env:TEMP\vcpkg"
+          .\vcpkg.exe install zlib:x86-windows-static --x-install-root="$env:TEMP\vcpkg_inst_x86"
+          # Clone libmobi source
+          git clone --depth 1 https://github.com/bfabiszewski/libmobi.git "$env:TEMP\libmobi-src"
+          # Build libmobi with cmake (x86)
+          cmake -S "$env:TEMP\libmobi-src" -B "$env:TEMP\libmobi-build-x86" `
+            -A Win32 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x86-windows-static `
+            -DVCPKG_INSTALLED_DIR="$env:TEMP\vcpkg_inst_x86" `
+            -DZLIB_INCLUDE_DIR="$env:TEMP\vcpkg_inst_x86\x86-windows-static\include" `
+            -DZLIB_LIBRARY="$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zlib.lib"
+          cmake --build "$env:TEMP\libmobi-build-x86" --config Release
+          Copy-Item "$env:TEMP\libmobi-build-x86\Release\mobi.lib" "opensrc\libmobi\lib\libmobi.lib" -Force
+          Copy-Item "$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zlib.lib" "opensrc\zlib\lib\zlibstat.lib" -Force
+          Write-Host "x86 libs replaced"
+
+      - name: Build zlib + libmobi (x64)
+        shell: powershell
+        run: |
+          cd "$env:TEMP\vcpkg"
+          .\vcpkg.exe install zlib:x64-windows-static --x-install-root="$env:TEMP\vcpkg_inst_x64"
+          cmake -S "$env:TEMP\libmobi-src" -B "$env:TEMP\libmobi-build-x64" `
+            -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DVCPKG_INSTALLED_DIR="$env:TEMP\vcpkg_inst_x64" `
+            -DZLIB_INCLUDE_DIR="$env:TEMP\vcpkg_inst_x64\x64-windows-static\include" `
+            -DZLIB_LIBRARY="$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib"
+          cmake --build "$env:TEMP\libmobi-build-x64" --config Release
+          Copy-Item "$env:TEMP\libmobi-build-x64\Release\mobi.lib" "opensrc\libmobi\lib\x64\libmobi.lib" -Force
+          Copy-Item "$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib" "opensrc\zlib\lib\x64\zlibstat.lib" -Force
+          Write-Host "x64 libs replaced"
+
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
         with:
