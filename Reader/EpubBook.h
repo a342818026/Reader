@@ -56,7 +56,7 @@ protected:
     BOOL ParserOps(file_data_t *fdata, wchar_t **text, int *len, wchar_t **title, int *tlen, BOOL parsertitle);
     BOOL ParserChapters(epub_t &epub);
     BOOL ParserCover(epub_t &epub);
-    BOOL WalkBodyNodes(xmlNode *node, wchar_t **text, int *len, int img_start_idx = -1, const char *chapter_path = NULL);
+    BOOL WalkBodyNodes(xmlNode *node, wchar_t **text, int *len);
     static void AppendText(wchar_t **text, int *len, const wchar_t *src, int srclen);
 
 protected:
