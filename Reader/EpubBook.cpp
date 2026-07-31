@@ -27,6 +27,16 @@ EpubBook::~EpubBook()
     {
         delete m_Cover;
     }
+    // Free cached inline image bitmaps
+    for (size_t i = 0; i < m_ImageCache.size(); i++)
+    {
+        if (m_ImageCache[i])
+        {
+            delete m_ImageCache[i];
+            m_ImageCache[i] = NULL;
+        }
+    }
+    m_ImageCache.clear();
     xmlCleanupParser();
 }
 
@@ -720,9 +730,38 @@ BOOL EpubBook::WalkBodyNodes(xmlNode *node, wchar_t **text, int *len)
                     // Insert marker character
                     wchar_t marker = (wchar_t)IMAGE_MARKER;
                     AppendText(text, len, &marker, 1);
-                    // Record image path
+                    // Record image path: resolve relative to current chapter dir,
+                    // normalize "../" and "./" against epub root
+                    std::string rel = (const char*)src;
+                    if (!m_CurChapterPath.empty())
+                        rel = m_CurChapterPath + rel;
+                    // Normalize: resolve "." and ".." segments
+                    std::string norm;
+                    std::string tmp = rel;
+                    while (1)
+                    {
+                        size_t dot = tmp.find("./");
+                        if (dot == std::string::npos)
+                            break;
+                        tmp.erase(dot, 2);
+                    }
+                    // Resolve ".." segments against epub root (m_EpubPath)
+                    std::string root = m_EpubPath;
+                    std::string rest = tmp;
+                    while (rest.compare(0, 3, "../") == 0)
+                    {
+                        if (!root.empty() && root[root.size()-1] == '/')
+                            root.erase(root.size()-1);
+                        size_t last_slash = root.rfind('/');
+                        if (last_slash != std::string::npos)
+                            root.erase(last_slash + 1);
+                        else
+                            root.clear();
+                        rest.erase(0, 3);
+                    }
+                    norm = root + rest;
                     epub_image_t img;
-                    img.path = (const char*)src;
+                    img.path = norm;
                     img.display_w = 0;
                     img.display_h = 0;
                     m_Images.push_back(img);
@@ -898,11 +937,19 @@ BOOL EpubBook::ParserChapters(epub_t &epub)
         if (itmfest != epub.manifests.end())
         {
             filename = epub.path + itmfest->second->href;
+            // Set current chapter dir (relative to epub root) for image src resolution
+            std::string href = itmfest->second->href;
+            size_t slash = href.rfind('/');
+            if (slash != std::string::npos)
+                m_CurChapterPath = href.substr(0, slash + 1);
+            else
+                m_CurChapterPath.clear();
             itflist = m_flist.find(filename);
             itnav = epub.navpoints.find(itmfest->second->href);
             if (itflist != m_flist.end() /*&& itnav != epub.navmap.end()*/)
             {
                 fdata = &(itflist->second);
+                int img_before = (int)m_Images.size();
                 if (ParserOps(fdata, &text, &len, &title, &tlen, itnav == epub.navpoints.end()))
                 {
                     if (len > 0)
@@ -927,6 +974,20 @@ BOOL EpubBook::ParserChapters(epub_t &epub)
                             m_Chapters.push_back(chapter);
                         index++;
                     }
+                    else
+                    {
+                        // Chapter produced no text; drop any images collected for it
+                        m_Images.resize(img_before);
+                        if (text) { free(text); text = NULL; }
+                        len = 0;
+                    }
+                }
+                else
+                {
+                    // ParserOps failed; roll back images collected during this chapter
+                    m_Images.resize(img_before);
+                    if (text) { free(text); text = NULL; }
+                    len = 0;
                 }
             }
         }
@@ -1140,8 +1201,13 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     if (img.path.empty())
         return NULL;
 
+    // Return cached bitmap if already decoded
+    if (index < (int)m_ImageCache.size() && m_ImageCache[index])
+        return m_ImageCache[index];
+
     IStream *pStream = NULL;
-    filelist_t::iterator it = m_flist.find(m_EpubPath + img.path);
+    // img.path is already resolved against the epub root (see WalkBodyNodes)
+    filelist_t::iterator it = m_flist.find(img.path);
     if (it == m_flist.end())
         return NULL;
     file_data_t *fdata = &(it->second);
@@ -1158,6 +1224,11 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     img.display_w = bmp->GetWidth();
     img.display_h = bmp->GetHeight();
     pStream->Release();
+
+    // Cache it for reuse (owned by m_ImageCache, freed in destructor)
+    if (index >= (int)m_ImageCache.size())
+        m_ImageCache.resize(m_Images.size(), NULL);
+    m_ImageCache[index] = bmp;
     return bmp;
 }
 
