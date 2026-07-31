@@ -29,7 +29,10 @@ jobs:
           vs-version: '[16.0,17.0)'
 
       - name: Build (Release x86)
-        run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v142
+        shell: cmd
+        run: |
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars32.bat"
+          msbuild Reader.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v142
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -38,7 +41,10 @@ jobs:
           path: Release/Reader.exe
 
       - name: Build (Release x64)
-        run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v142
+        shell: cmd
+        run: |
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+          msbuild Reader.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v142
 
       - name: Upload x64 artifact
         uses: actions/upload-artifact@v4
