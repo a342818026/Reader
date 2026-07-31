@@ -14,10 +14,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add MSBuild (VS2019)
+      - name: Install VS2019 Build Tools (v142)
+        shell: powershell
+        run: |
+          choco install visualstudio2019buildtools --yes --no-progress `
+            --params "--add Microsoft.VisualStudio.Workload.VCTools `
+                      --add Microsoft.VisualStudio.Component.VC.v142.x86.x64 `
+                      --add Microsoft.VisualStudio.Component.Windows10SDK.17763 `
+                      --quiet --wait"
+
+      - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
         with:
-          vs-version: '[16.0,17.0)'  # prefer VS2019 (v142 toolset)
+          vs-version: '[16.0,17.0)'
 
       - name: Build (Release x86)
         run: msbuild Reader.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v142
