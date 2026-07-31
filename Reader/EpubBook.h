@@ -6,6 +6,10 @@
 #include <map>
 #include <vector>
 
+// Forward declaration for libxml2 node type (header-only usage)
+struct _xmlNode;
+typedef struct _xmlNode xmlNode;
+
 typedef struct epub_image_t
 {
     std::string path;          // path inside EPUB
