@@ -49,18 +49,22 @@ jobs:
           .\vcpkg.exe install zlib:x86-windows-static --x-install-root="$env:TEMP\vcpkg_inst_x86"
           # Clone libmobi source
           git clone --depth 1 https://github.com/bfabiszewski/libmobi.git "$env:TEMP\libmobi-src"
-          # Build libmobi static lib only (skip tools; use builtin xmlwriter, no libxml2/libiconv)
-          # ZLIB_WINAPI = stdcall calling convention, matching the repo's zlibstat.lib
+          # Build libmobi static lib only (skip tools)
+          # USE_XMLWRITER=ON + USE_LIBXML2=ON: link against the repo's own
+          # libxml2_a.lib instead of compiling the builtin xmlwriter.c
+          # (builtin xmlwriter defines xmlBuffer* symbols that collide with
+          # libxml2_a.lib at final link). ZLIB_WINAPI matches repo zlibstat.lib.
           cmake -S "$env:TEMP\libmobi-src" -B "$env:TEMP\libmobi-build-x86" `
             -A Win32 `
             -DCMAKE_BUILD_TYPE=Release `
             -DBUILD_SHARED_LIBS=OFF `
-            -DUSE_LIBXML2=OFF `
-            -DUSE_XMLWRITER=OFF `
+            -DUSE_LIBXML2=ON `
+            -DUSE_XMLWRITER=ON `
+            -DUSE_ZLIB=ON `
+            -DUSE_ENCRYPTION=ON `
             -DCMAKE_C_FLAGS="/DZLIB_WINAPI /Dstrdup=_strdup /D_CRT_SECURE_NO_WARNINGS" `
-            -DCMAKE_TOOLCHAIN_FILE="$env:TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
-            -DVCPKG_TARGET_TRIPLET=x86-windows-static `
-            -DVCPKG_INSTALLED_DIR="$env:TEMP\vcpkg_inst_x86" `
+            -DLIBXML2_INCLUDE_DIR="$env:GITHUB_WORKSPACE\opensrc\libxml2\inc" `
+            -DLIBXML2_LIBRARY="$env:GITHUB_WORKSPACE\opensrc\libxml2\lib\libxml2_a.lib" `
             -DZLIB_INCLUDE_DIR="$env:TEMP\vcpkg_inst_x86\x86-windows-static\include" `
             -DZLIB_LIBRARY="$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zlib.lib"
           cmake --build "$env:TEMP\libmobi-build-x86" --config Release --target mobi
@@ -74,18 +78,22 @@ jobs:
         run: |
           cd "$env:TEMP\vcpkg"
           .\vcpkg.exe install zlib:x64-windows-static --x-install-root="$env:TEMP\vcpkg_inst_x64"
-          # Build libmobi static lib only (skip tools; use builtin xmlwriter, no libxml2/libiconv)
-          # ZLIB_WINAPI = stdcall calling convention, matching the repo's zlibstat.lib
+          # Build libmobi static lib only (skip tools)
+          # USE_XMLWRITER=ON + USE_LIBXML2=ON: link against the repo's own
+          # libxml2_a.lib instead of compiling the builtin xmlwriter.c
+          # (builtin xmlwriter defines xmlBuffer* symbols that collide with
+          # libxml2_a.lib at final link). ZLIB_WINAPI matches repo zlibstat.lib.
           cmake -S "$env:TEMP\libmobi-src" -B "$env:TEMP\libmobi-build-x64" `
             -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
             -DBUILD_SHARED_LIBS=OFF `
-            -DUSE_LIBXML2=OFF `
-            -DUSE_XMLWRITER=OFF `
+            -DUSE_LIBXML2=ON `
+            -DUSE_XMLWRITER=ON `
+            -DUSE_ZLIB=ON `
+            -DUSE_ENCRYPTION=ON `
             -DCMAKE_C_FLAGS="/DZLIB_WINAPI /Dstrdup=_strdup /D_CRT_SECURE_NO_WARNINGS" `
-            -DCMAKE_TOOLCHAIN_FILE="$env:TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
-            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
-            -DVCPKG_INSTALLED_DIR="$env:TEMP\vcpkg_inst_x64" `
+            -DLIBXML2_INCLUDE_DIR="$env:GITHUB_WORKSPACE\opensrc\libxml2\inc" `
+            -DLIBXML2_LIBRARY="$env:GITHUB_WORKSPACE\opensrc\libxml2\lib\x64\libxml2_a.lib" `
             -DZLIB_INCLUDE_DIR="$env:TEMP\vcpkg_inst_x64\x64-windows-static\include" `
             -DZLIB_LIBRARY="$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib"
           cmake --build "$env:TEMP\libmobi-build-x64" --config Release --target mobi
