@@ -65,10 +65,12 @@ jobs:
           Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi*.lib" | Select-Object FullName
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\libmobi.lib" -Force
-          # zlib path confirmed by CMake output earlier in this step
-          $zlibPath = "$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zlib.lib"
-          Write-Host "zlib path: $zlibPath, exists: $(Test-Path $zlibPath)"
-          Copy-Item $zlibPath "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
+          # Find zlib.lib anywhere under TEMP (vcpkg install root varies)
+          Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+          $zlib = Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $zlib) { throw "zlib.lib not found under $env:TEMP" }
+          Write-Host "zlib found: $($zlib.FullName)"
+          Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
           Write-Host "x86 libs replaced"
 
       - name: Build zlib + libmobi (x64)
@@ -90,10 +92,12 @@ jobs:
           cmake --build "$env:TEMP\libmobi-build-x64" --config Release --target mobi
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x64" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\x64\libmobi.lib" -Force
-          # zlib path confirmed by CMake output earlier in this step
-          $zlibPath = "$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib"
-          Write-Host "zlib path: $zlibPath, exists: $(Test-Path $zlibPath)"
-          Copy-Item $zlibPath "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
+          # Find zlib.lib anywhere under TEMP (vcpkg install root varies)
+          Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+          $zlib = Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $zlib) { throw "zlib.lib not found under $env:TEMP" }
+          Write-Host "zlib found: $($zlib.FullName)"
+          Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
           Write-Host "x64 libs replaced"
 
       - name: Add MSBuild to PATH
