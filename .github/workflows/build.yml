@@ -65,18 +65,23 @@ jobs:
           Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi*.lib" | Select-Object FullName
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\libmobi.lib" -Force
-          # Find zlib.lib - list files in the confirmed lib dirs
+          # Find zlib static lib - vcpkg names it zs.lib (release) / zsd.lib (debug)
           Write-Host "TEMP=$env:TEMP"
-          Write-Host "--- files in vcpkg_inst_x86 lib ---"
-          Get-ChildItem "$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
-          Write-Host "--- files in vcpkg_inst_x86 debug/lib ---"
-          Get-ChildItem "$env:TEMP\vcpkg_inst_x86\x86-windows-static\debug\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
-          Write-Host "--- files in vcpkg packages zlib lib ---"
-          Get-ChildItem "$env:TEMP\vcpkg\packages\zlib_x86-windows-static\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
-          $zlib = Get-ChildItem "$env:TEMP\vcpkg_inst_x86" -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '\.lib$' } | Select-Object -First 1
-          if (-not $zlib) { throw "zlib.lib not found" }
-          Write-Host "zlib found: $($zlib.FullName)"
-          Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
+          Write-Host "--- all .lib files under vcpkg_inst_x86 ---"
+          Get-ChildItem "$env:TEMP\vcpkg_inst_x86" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+          Write-Host "--- all .lib files under vcpkg installed ---"
+          Get-ChildItem "$env:TEMP\vcpkg\installed" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+          $zlib = $null
+          foreach ($cand in @("$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zs.lib", "$env:TEMP\vcpkg\installed\x86-windows-static\lib\zs.lib")) {
+            if (Test-Path $cand) { $zlib = $cand; break }
+          }
+          if (-not $zlib) {
+            $found = Get-ChildItem "$env:TEMP" -Recurse -Filter "zs.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) { $zlib = $found.FullName }
+          }
+          if (-not $zlib) { throw "zs.lib not found" }
+          Write-Host "zlib found: $zlib"
+          Copy-Item $zlib "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
           Write-Host "x86 libs replaced"
 
       - name: Build zlib + libmobi (x64)
@@ -98,18 +103,23 @@ jobs:
           cmake --build "$env:TEMP\libmobi-build-x64" --config Release --target mobi
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x64" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\x64\libmobi.lib" -Force
-          # Find zlib.lib - list files in the confirmed lib dirs
+          # Find zlib static lib - vcpkg names it zs.lib (release) / zsd.lib (debug)
           Write-Host "TEMP=$env:TEMP"
-          Write-Host "--- files in vcpkg_inst_x64 lib ---"
-          Get-ChildItem "$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
-          Write-Host "--- files in vcpkg_inst_x64 debug/lib ---"
-          Get-ChildItem "$env:TEMP\vcpkg_inst_x64\x64-windows-static\debug\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
-          Write-Host "--- files in vcpkg packages zlib lib ---"
-          Get-ChildItem "$env:TEMP\vcpkg\packages\zlib_x64-windows-static\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
-          $zlib = Get-ChildItem "$env:TEMP\vcpkg_inst_x64" -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '\.lib$' } | Select-Object -First 1
-          if (-not $zlib) { throw "zlib.lib not found" }
-          Write-Host "zlib found: $($zlib.FullName)"
-          Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
+          Write-Host "--- all .lib files under vcpkg_inst_x64 ---"
+          Get-ChildItem "$env:TEMP\vcpkg_inst_x64" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+          Write-Host "--- all .lib files under vcpkg installed ---"
+          Get-ChildItem "$env:TEMP\vcpkg\installed" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+          $zlib = $null
+          foreach ($cand in @("$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zs.lib", "$env:TEMP\vcpkg\installed\x64-windows-static\lib\zs.lib")) {
+            if (Test-Path $cand) { $zlib = $cand; break }
+          }
+          if (-not $zlib) {
+            $found = Get-ChildItem "$env:TEMP" -Recurse -Filter "zs.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) { $zlib = $found.FullName }
+          }
+          if (-not $zlib) { throw "zs.lib not found" }
+          Write-Host "zlib found: $zlib"
+          Copy-Item $zlib "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
           Write-Host "x64 libs replaced"
 
       - name: Add MSBuild to PATH
