@@ -11,6 +11,8 @@
 #include "libxml/HTMLparser.h"
 #include "libxml/xpath.h"
 #include <shlwapi.h>
+#include <stdio.h>
+#include <windows.h>
 
 
 EpubBook::EpubBook()
@@ -1232,7 +1234,16 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     // img.path is already resolved against the epub root (see WalkBodyNodes)
     filelist_t::iterator it = m_flist.find(img.path);
     if (it == m_flist.end())
+    {
+        // Debug: dump what we looked for vs what's in the file list
+        char dbg[2048];
+        snprintf(dbg, sizeof(dbg), "[Reader] image NOT FOUND: '%s' | flist size=%d | epub root='%s'\n",
+                 img.path.c_str(), (int)m_flist.size(), m_EpubPath.c_str());
+        OutputDebugStringA(dbg);
+        FILE *f = fopen("reader_img_debug.log", "a");
+        if (f) { fputs(dbg, f); fclose(f); }
         return NULL;
+    }
     file_data_t *fdata = &(it->second);
     pStream = SHCreateMemStream((const BYTE *)fdata->data, fdata->size);
     if (!pStream)
