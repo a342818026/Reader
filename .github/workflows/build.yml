@@ -50,12 +50,14 @@ jobs:
           # Clone libmobi source
           git clone --depth 1 https://github.com/bfabiszewski/libmobi.git "$env:TEMP\libmobi-src"
           # Build libmobi static lib only (skip tools; use builtin xmlwriter, no libxml2/libiconv)
+          # ZLIB_WINAPI = stdcall calling convention, matching the repo's zlibstat.lib
           cmake -S "$env:TEMP\libmobi-src" -B "$env:TEMP\libmobi-build-x86" `
             -A Win32 `
             -DCMAKE_BUILD_TYPE=Release `
             -DBUILD_SHARED_LIBS=OFF `
             -DUSE_LIBXML2=OFF `
             -DUSE_XMLWRITER=ON `
+            -DCMAKE_C_FLAGS="/DZLIB_WINAPI /Dstrdup=_strdup /D_CRT_SECURE_NO_WARNINGS" `
             -DCMAKE_TOOLCHAIN_FILE="$env:TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x86-windows-static `
             -DVCPKG_INSTALLED_DIR="$env:TEMP\vcpkg_inst_x86" `
@@ -65,36 +67,22 @@ jobs:
           Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi*.lib" | Select-Object FullName
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\libmobi.lib" -Force
-          # Find zlib static lib - vcpkg names it zs.lib (release) / zsd.lib (debug)
-          Write-Host "TEMP=$env:TEMP"
-          Write-Host "--- all .lib files under vcpkg_inst_x86 ---"
-          Get-ChildItem "$env:TEMP\vcpkg_inst_x86" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
-          Write-Host "--- all .lib files under vcpkg installed ---"
-          Get-ChildItem "$env:TEMP\vcpkg\installed" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
-          $zlib = $null
-          foreach ($cand in @("$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zs.lib", "$env:TEMP\vcpkg\installed\x86-windows-static\lib\zs.lib")) {
-            if (Test-Path $cand) { $zlib = $cand; break }
-          }
-          if (-not $zlib) {
-            $found = Get-ChildItem "$env:TEMP" -Recurse -Filter "zs.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) { $zlib = $found.FullName }
-          }
-          if (-not $zlib) { throw "zs.lib not found" }
-          Write-Host "zlib found: $zlib"
-          Copy-Item $zlib "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
-          Write-Host "x86 libs replaced"
+          Write-Host "x86 libmobi replaced (zlibstat.lib kept original stdcall version)"
 
       - name: Build zlib + libmobi (x64)
         shell: powershell
         run: |
           cd "$env:TEMP\vcpkg"
           .\vcpkg.exe install zlib:x64-windows-static --x-install-root="$env:TEMP\vcpkg_inst_x64"
+          # Build libmobi static lib only (skip tools; use builtin xmlwriter, no libxml2/libiconv)
+          # ZLIB_WINAPI = stdcall calling convention, matching the repo's zlibstat.lib
           cmake -S "$env:TEMP\libmobi-src" -B "$env:TEMP\libmobi-build-x64" `
             -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
             -DBUILD_SHARED_LIBS=OFF `
             -DUSE_LIBXML2=OFF `
             -DUSE_XMLWRITER=ON `
+            -DCMAKE_C_FLAGS="/DZLIB_WINAPI /Dstrdup=_strdup /D_CRT_SECURE_NO_WARNINGS" `
             -DCMAKE_TOOLCHAIN_FILE="$env:TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DVCPKG_INSTALLED_DIR="$env:TEMP\vcpkg_inst_x64" `
@@ -103,24 +91,7 @@ jobs:
           cmake --build "$env:TEMP\libmobi-build-x64" --config Release --target mobi
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x64" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\x64\libmobi.lib" -Force
-          # Find zlib static lib - vcpkg names it zs.lib (release) / zsd.lib (debug)
-          Write-Host "TEMP=$env:TEMP"
-          Write-Host "--- all .lib files under vcpkg_inst_x64 ---"
-          Get-ChildItem "$env:TEMP\vcpkg_inst_x64" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
-          Write-Host "--- all .lib files under vcpkg installed ---"
-          Get-ChildItem "$env:TEMP\vcpkg\installed" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
-          $zlib = $null
-          foreach ($cand in @("$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zs.lib", "$env:TEMP\vcpkg\installed\x64-windows-static\lib\zs.lib")) {
-            if (Test-Path $cand) { $zlib = $cand; break }
-          }
-          if (-not $zlib) {
-            $found = Get-ChildItem "$env:TEMP" -Recurse -Filter "zs.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) { $zlib = $found.FullName }
-          }
-          if (-not $zlib) { throw "zs.lib not found" }
-          Write-Host "zlib found: $zlib"
-          Copy-Item $zlib "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
-          Write-Host "x64 libs replaced"
+          Write-Host "x64 libmobi replaced (zlibstat.lib kept original stdcall version)"
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
