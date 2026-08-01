@@ -65,10 +65,19 @@ jobs:
           Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi*.lib" | Select-Object FullName
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\libmobi.lib" -Force
-          # Find zlib.lib anywhere under TEMP (vcpkg install root varies)
-          Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
-          $zlib = Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $zlib) { throw "zlib.lib not found under $env:TEMP" }
+          # Find zlib.lib - dump dir tree first to locate actual install
+          Write-Host "TEMP=$env:TEMP"
+          Write-Host "vcpkg_inst_x86 exists: $(Test-Path "$env:TEMP\vcpkg_inst_x86")"
+          if (Test-Path "$env:TEMP\vcpkg_inst_x86") {
+            Get-ChildItem "$env:TEMP\vcpkg_inst_x86" -Recurse -Directory | Select-Object -First 20 FullName
+          }
+          Get-ChildItem "C:\Users\runneradmin\AppData\Local\Temp" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+          $zlib = Get-ChildItem "C:\Users\runneradmin\AppData\Local\Temp" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $zlib) {
+            Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+            $zlib = Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          if (-not $zlib) { throw "zlib.lib not found" }
           Write-Host "zlib found: $($zlib.FullName)"
           Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
           Write-Host "x86 libs replaced"
@@ -92,10 +101,19 @@ jobs:
           cmake --build "$env:TEMP\libmobi-build-x64" --config Release --target mobi
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x64" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\x64\libmobi.lib" -Force
-          # Find zlib.lib anywhere under TEMP (vcpkg install root varies)
-          Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
-          $zlib = Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $zlib) { throw "zlib.lib not found under $env:TEMP" }
+          # Find zlib.lib - dump dir tree first to locate actual install
+          Write-Host "TEMP=$env:TEMP"
+          Write-Host "vcpkg_inst_x64 exists: $(Test-Path "$env:TEMP\vcpkg_inst_x64")"
+          if (Test-Path "$env:TEMP\vcpkg_inst_x64") {
+            Get-ChildItem "$env:TEMP\vcpkg_inst_x64" -Recurse -Directory | Select-Object -First 20 FullName
+          }
+          Get-ChildItem "C:\Users\runneradmin\AppData\Local\Temp" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+          $zlib = Get-ChildItem "C:\Users\runneradmin\AppData\Local\Temp" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $zlib) {
+            Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object FullName
+            $zlib = Get-ChildItem "$env:TEMP" -Recurse -Filter "zlib*.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          if (-not $zlib) { throw "zlib.lib not found" }
           Write-Host "zlib found: $($zlib.FullName)"
           Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
           Write-Host "x64 libs replaced"
