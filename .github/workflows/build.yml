@@ -66,9 +66,14 @@ jobs:
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\libmobi.lib" -Force
           # zlib from vcpkg - find actual lib file name
-          Get-ChildItem "$env:TEMP\vcpkg" -Recurse -Filter "zlib*.lib" | Select-Object FullName
-          $zlib = Get-ChildItem "$env:TEMP\vcpkg" -Recurse -Filter "zlib*.lib" | Where-Object { $_.FullName -match 'static' } | Select-Object -First 1
-          if (-not $zlib) { $zlib = Get-ChildItem "$env:TEMP\vcpkg" -Recurse -Filter "zlib*.lib" | Select-Object -First 1 }
+          $vcpkgRoot = "$env:TEMP\vcpkg_inst_x86"
+          Get-ChildItem $vcpkgRoot -Recurse -Filter "zlib*.lib" | Select-Object FullName
+          $zlib = Get-ChildItem $vcpkgRoot -Recurse -Filter "zlib*.lib" | Select-Object -First 1
+          if (-not $zlib) {
+            # fallback: search both vcpkg dirs
+            $zlib = Get-ChildItem "$env:TEMP\vcpkg" -Recurse -Filter "zlib*.lib" | Select-Object -First 1
+          }
+          Write-Host "zlib found: $($zlib.FullName)"
           Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
           Write-Host "x86 libs replaced"
 
@@ -92,9 +97,14 @@ jobs:
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x64" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\x64\libmobi.lib" -Force
           # zlib from vcpkg - find actual lib file name
-          Get-ChildItem "$env:TEMP\vcpkg" -Recurse -Filter "zlib*.lib" | Select-Object FullName
-          $zlib = Get-ChildItem "$env:TEMP\vcpkg" -Recurse -Filter "zlib*.lib" | Where-Object { $_.FullName -match 'static' } | Select-Object -First 1
-          if (-not $zlib) { $zlib = Get-ChildItem "$env:TEMP\vcpkg" -Recurse -Filter "zlib*.lib" | Select-Object -First 1 }
+          $vcpkgRoot = "$env:TEMP\vcpkg_inst_x64"
+          Get-ChildItem $vcpkgRoot -Recurse -Filter "zlib*.lib" | Select-Object FullName
+          $zlib = Get-ChildItem $vcpkgRoot -Recurse -Filter "zlib*.lib" | Select-Object -First 1
+          if (-not $zlib) {
+            # fallback: search both vcpkg dirs
+            $zlib = Get-ChildItem "$env:TEMP\vcpkg" -Recurse -Filter "zlib*.lib" | Select-Object -First 1
+          }
+          Write-Host "zlib found: $($zlib.FullName)"
           Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
           Write-Host "x64 libs replaced"
 
