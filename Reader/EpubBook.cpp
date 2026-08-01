@@ -11,8 +11,6 @@
 #include "libxml/HTMLparser.h"
 #include "libxml/xpath.h"
 #include <shlwapi.h>
-#include <stdio.h>
-#include <windows.h>
 
 
 EpubBook::EpubBook()
@@ -104,14 +102,6 @@ end:
     // Pre-decode all inline images NOW while m_flist is still populated.
     // FreeFilelist() below releases all file data; DecodeImage() is called
     // again at render time and must hit m_ImageCache, not m_flist.
-    {
-        char dbg[1024];
-        snprintf(dbg, sizeof(dbg), "[Reader] pre-decode start: images=%d flist=%d\n",
-                 (int)m_Images.size(), (int)m_flist.size());
-        OutputDebugStringA(dbg);
-        FILE *f = fopen("reader_img_debug.log", "a");
-        if (f) { fputs(dbg, f); fclose(f); }
-    }
     for (size_t ii = 0; ii < m_Images.size(); ii++)
     {
         DecodeImage((int)ii);
@@ -1249,16 +1239,7 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     // img.path is already resolved against the epub root (see WalkBodyNodes)
     filelist_t::iterator it = m_flist.find(img.path);
     if (it == m_flist.end())
-    {
-        // Debug: dump what we looked for vs what's in the file list
-        char dbg[2048];
-        snprintf(dbg, sizeof(dbg), "[Reader] image NOT FOUND: '%s' | flist size=%d | epub root='%s'\n",
-                 img.path.c_str(), (int)m_flist.size(), m_EpubPath.c_str());
-        OutputDebugStringA(dbg);
-        FILE *f = fopen("reader_img_debug.log", "a");
-        if (f) { fputs(dbg, f); fclose(f); }
         return NULL;
-    }
     file_data_t *fdata = &(it->second);
     pStream = SHCreateMemStream((const BYTE *)fdata->data, fdata->size);
     if (!pStream)
