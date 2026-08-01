@@ -101,6 +101,13 @@ end:
     }
     epub.navpoints.clear();
     epub.spines.clear();
+    // Pre-decode all inline images NOW while m_flist is still populated.
+    // FreeFilelist() below releases all file data; DecodeImage() is called
+    // again at render time and must hit m_ImageCache, not m_flist.
+    for (size_t ii = 0; ii < m_Images.size(); ii++)
+    {
+        DecodeImage((int)ii);
+    }
     FreeFilelist();
     if (!ret)
     {
