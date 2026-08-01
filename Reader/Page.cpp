@@ -236,20 +236,31 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
                 // This character is an image marker - draw the image
                 Gdiplus::Bitmap *bmp = NULL;
                 int img_w = 0, img_h = 0;
-                if (GetInlineImage(img_idx, &bmp, &img_w, &img_h) && bmp)
+                // "show_inline_img" switch (设置-显示设置-显示正文图片, default on).
+                // When off, the marker is skipped entirely (image hidden, no [obj]).
+                if (m_header && m_header->show_inline_img &&
+                    GetInlineImage(img_idx, &bmp, &img_w, &img_h) && bmp)
                 {
                     // Skip very small images (bookmark icons, decorative elements)
                     if (img_w >= 32 && img_h >= 32)
                     {
                         int content_w = (rc->right - rc->left) - LEFT_MIN - RIGHT_MIN;
-                        // Scale to fit content width with some margin (85%)
+                        int content_h = (rc->bottom - rc->top) - TOP_MIN - BOTTOM_MIN;
+                        // Scale to fit the whole window (both width and height),
+                        // keeping aspect ratio, with some margin (85%)
                         int max_draw_w = content_w * 85 / 100;
+                        int max_draw_h = content_h * 85 / 100;
                         int draw_w = img_w;
                         int draw_h = img_h;
                         if (draw_w > max_draw_w)
                         {
                             draw_h = draw_h * max_draw_w / draw_w;
                             draw_w = max_draw_w;
+                        }
+                        if (draw_h > max_draw_h)
+                        {
+                            draw_w = draw_w * max_draw_h / draw_h;
+                            draw_h = max_draw_h;
                         }
                         // Center the image horizontally
                         int img_x = LEFT_MIN + (content_w - draw_w) / 2;
@@ -263,6 +274,11 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
                     continue;
                 }
                 img_idx++; // count this marker even if no image was drawn
+                if (m_header && !m_header->show_inline_img)
+                {
+                    // Images disabled in settings - skip the marker entirely
+                    continue;
+                }
                 // Fall through to draw the marker as a space-like character
             }
             
