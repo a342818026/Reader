@@ -390,6 +390,7 @@ void Cache::default_header(header_t* header)
     header->line_indent = 1;
     header->blank_lines = 1;
     header->chapter_page = 0;
+    header->show_inline_img = 1;
 
     // default keyset
     header->global_key = 0;
