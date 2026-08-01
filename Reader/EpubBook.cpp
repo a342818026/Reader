@@ -104,6 +104,14 @@ end:
     // Pre-decode all inline images NOW while m_flist is still populated.
     // FreeFilelist() below releases all file data; DecodeImage() is called
     // again at render time and must hit m_ImageCache, not m_flist.
+    {
+        char dbg[1024];
+        snprintf(dbg, sizeof(dbg), "[Reader] pre-decode start: images=%d flist=%d\n",
+                 (int)m_Images.size(), (int)m_flist.size());
+        OutputDebugStringA(dbg);
+        FILE *f = fopen("reader_img_debug.log", "a");
+        if (f) { fputs(dbg, f); fclose(f); }
+    }
     for (size_t ii = 0; ii < m_Images.size(); ii++)
     {
         DecodeImage((int)ii);
