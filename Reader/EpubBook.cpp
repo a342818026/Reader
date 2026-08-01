@@ -722,6 +722,13 @@ BOOL EpubBook::WalkBodyNodes(xmlNode *node, wchar_t **text, int *len)
         else if (cur->type == XML_ELEMENT_NODE)
         {
             const char *tag = (const char*)cur->name;
+            // Recover-mode parse can produce nodes with NULL name - skip safely
+            if (tag == NULL)
+            {
+                if (cur->children)
+                    WalkBodyNodes(cur->children, text, len);
+                continue;
+            }
             if (strcmp(tag, "img") == 0)
             {
                 xmlChar *src = xmlGetProp(cur, (const xmlChar*)"src");
@@ -731,35 +738,41 @@ BOOL EpubBook::WalkBodyNodes(xmlNode *node, wchar_t **text, int *len)
                     wchar_t marker = (wchar_t)IMAGE_MARKER;
                     AppendText(text, len, &marker, 1);
                     // Record image path: resolve relative to current chapter dir,
-                    // normalize "../" and "./" against epub root
+                    // normalize "." and ".." segments against epub root
                     std::string rel = (const char*)src;
                     if (!m_CurChapterPath.empty())
                         rel = m_CurChapterPath + rel;
-                    // Normalize: resolve "." and ".." segments
-                    std::string norm;
-                    std::string tmp = rel;
-                    while (1)
+                    // Resolve path segments with a stack
+                    std::vector<std::string> segs;
+                    size_t pos = 0;
+                    while (pos <= rel.size())
                     {
-                        size_t dot = tmp.find("./");
-                        if (dot == std::string::npos)
+                        size_t slash = rel.find('/', pos);
+                        std::string seg = (slash == std::string::npos)
+                            ? rel.substr(pos)
+                            : rel.substr(pos, slash - pos);
+                        if (seg == "..")
+                        {
+                            if (!segs.empty() && segs.back() != "..")
+                                segs.pop_back();
+                            // else: leading ".." beyond root - drop it
+                        }
+                        else if (!seg.empty() && seg != ".")
+                        {
+                            segs.push_back(seg);
+                        }
+                        if (slash == std::string::npos)
                             break;
-                        tmp.erase(dot, 2);
+                        pos = slash + 1;
                     }
-                    // Resolve ".." segments against epub root (m_EpubPath)
-                    std::string root = m_EpubPath;
-                    std::string rest = tmp;
-                    while (rest.compare(0, 3, "../") == 0)
+                    // Rebuild: epub root (m_EpubPath) + remaining segments
+                    std::string norm = m_EpubPath;
+                    for (size_t s = 0; s < segs.size(); s++)
                     {
-                        if (!root.empty() && root[root.size()-1] == '/')
-                            root.erase(root.size()-1);
-                        size_t last_slash = root.rfind('/');
-                        if (last_slash != std::string::npos)
-                            root.erase(last_slash + 1);
-                        else
-                            root.clear();
-                        rest.erase(0, 3);
+                        if (s > 0 || (!norm.empty() && norm[norm.size()-1] != '/'))
+                            norm += '/';
+                        norm += segs[s];
                     }
-                    norm = root + rest;
                     epub_image_t img;
                     img.path = norm;
                     img.display_w = 0;
@@ -890,10 +903,13 @@ body:
         nodeset = xpathobj->nodesetval;
         for (i = 0; i < nodeset->nodeNr; i++)
         {
-            // Walk body children recursively to extract text + images
-            ret = WalkBodyNodes(nodeset->nodeTab[i], text, len);
+            // Walk body children recursively to extract text + images.
+            // Failure here is NOT fatal - some nodes may fail to decode
+            // but the chapter text is still usable.
+            WalkBodyNodes(nodeset->nodeTab[i], text, len);
             break;
         }
+        ret = TRUE;
     }
 
 end:
@@ -949,6 +965,13 @@ BOOL EpubBook::ParserChapters(epub_t &epub)
             if (itflist != m_flist.end() /*&& itnav != epub.navmap.end()*/)
             {
                 fdata = &(itflist->second);
+                // Reset per-chapter buffers: AppendText reallocs/appends,
+                // so each chapter must start from NULL/0 (unlike original
+                // DecodeText which mallocs fresh each call).
+                text = NULL;
+                len = 0;
+                title = NULL;
+                tlen = 0;
                 int img_before = (int)m_Images.size();
                 if (ParserOps(fdata, &text, &len, &title, &tlen, itnav == epub.navpoints.end()))
                 {
