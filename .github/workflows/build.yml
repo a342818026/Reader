@@ -64,8 +64,8 @@ jobs:
           cmake --build "$env:TEMP\libmobi-build-x86" --config Release --target mobi
           Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi*.lib" | Select-Object FullName
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi.lib" | Select-Object -First 1
-          Copy-Item $mobilib.FullName "opensrc\libmobi\lib\libmobi.lib" -Force
-          Copy-Item "$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zlib.lib" "opensrc\zlib\lib\zlibstat.lib" -Force
+          Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\libmobi.lib" -Force
+          Copy-Item "$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib\zlib.lib" "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
           Write-Host "x86 libs replaced"
 
       - name: Build zlib + libmobi (x64)
@@ -86,8 +86,8 @@ jobs:
             -DZLIB_LIBRARY="$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib"
           cmake --build "$env:TEMP\libmobi-build-x64" --config Release --target mobi
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x64" -Recurse -Filter "mobi.lib" | Select-Object -First 1
-          Copy-Item $mobilib.FullName "opensrc\libmobi\lib\x64\libmobi.lib" -Force
-          Copy-Item "$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib" "opensrc\zlib\lib\x64\zlibstat.lib" -Force
+          Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\x64\libmobi.lib" -Force
+          Copy-Item "$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib\zlib.lib" "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
           Write-Host "x64 libs replaced"
 
       - name: Add MSBuild to PATH
