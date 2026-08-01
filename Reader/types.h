@@ -224,6 +224,7 @@ typedef struct header_t
     int line_indent;
     int blank_lines;
     int chapter_page;
+    int show_inline_img;
     int global_key;
     keyset_t keyset[MAX_KEYSET_COUNT];
     chapter_rule_t chapter_rule;
