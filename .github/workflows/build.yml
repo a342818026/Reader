@@ -65,13 +65,15 @@ jobs:
           Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi*.lib" | Select-Object FullName
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x86" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\libmobi.lib" -Force
-          # Find zlib.lib - dump dir tree first to locate actual install
+          # Find zlib.lib - list files in the confirmed lib dirs
           Write-Host "TEMP=$env:TEMP"
-          Get-ChildItem "$env:TEMP\vcpkg\packages" -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 30 FullName
-          Get-ChildItem "$env:TEMP\vcpkg\installed" -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 30 FullName
-          Get-ChildItem "$env:TEMP\vcpkg_inst_x86" -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 30 FullName
-          Get-ChildItem "$env:TEMP" -Recurse -Include "*.lib" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'zlib' } | Select-Object FullName
-          $zlib = Get-ChildItem "$env:TEMP" -Recurse -Include "*.lib" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'zlib' } | Select-Object -First 1
+          Write-Host "--- files in vcpkg_inst_x86 lib ---"
+          Get-ChildItem "$env:TEMP\vcpkg_inst_x86\x86-windows-static\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
+          Write-Host "--- files in vcpkg_inst_x86 debug/lib ---"
+          Get-ChildItem "$env:TEMP\vcpkg_inst_x86\x86-windows-static\debug\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
+          Write-Host "--- files in vcpkg packages zlib lib ---"
+          Get-ChildItem "$env:TEMP\vcpkg\packages\zlib_x86-windows-static\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
+          $zlib = Get-ChildItem "$env:TEMP\vcpkg_inst_x86" -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '\.lib$' } | Select-Object -First 1
           if (-not $zlib) { throw "zlib.lib not found" }
           Write-Host "zlib found: $($zlib.FullName)"
           Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\zlibstat.lib" -Force
@@ -96,13 +98,15 @@ jobs:
           cmake --build "$env:TEMP\libmobi-build-x64" --config Release --target mobi
           $mobilib = Get-ChildItem "$env:TEMP\libmobi-build-x64" -Recurse -Filter "mobi.lib" | Select-Object -First 1
           Copy-Item $mobilib.FullName "$env:GITHUB_WORKSPACE\opensrc\libmobi\lib\x64\libmobi.lib" -Force
-          # Find zlib.lib - dump dir tree first to locate actual install
+          # Find zlib.lib - list files in the confirmed lib dirs
           Write-Host "TEMP=$env:TEMP"
-          Get-ChildItem "$env:TEMP\vcpkg\packages" -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 30 FullName
-          Get-ChildItem "$env:TEMP\vcpkg\installed" -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 30 FullName
-          Get-ChildItem "$env:TEMP\vcpkg_inst_x64" -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 30 FullName
-          Get-ChildItem "$env:TEMP" -Recurse -Include "*.lib" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'zlib' } | Select-Object FullName
-          $zlib = Get-ChildItem "$env:TEMP" -Recurse -Include "*.lib" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'zlib' } | Select-Object -First 1
+          Write-Host "--- files in vcpkg_inst_x64 lib ---"
+          Get-ChildItem "$env:TEMP\vcpkg_inst_x64\x64-windows-static\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
+          Write-Host "--- files in vcpkg_inst_x64 debug/lib ---"
+          Get-ChildItem "$env:TEMP\vcpkg_inst_x64\x64-windows-static\debug\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
+          Write-Host "--- files in vcpkg packages zlib lib ---"
+          Get-ChildItem "$env:TEMP\vcpkg\packages\zlib_x64-windows-static\lib" -File -ErrorAction SilentlyContinue | Select-Object Name,Length
+          $zlib = Get-ChildItem "$env:TEMP\vcpkg_inst_x64" -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '\.lib$' } | Select-Object -First 1
           if (-not $zlib) { throw "zlib.lib not found" }
           Write-Host "zlib found: $($zlib.FullName)"
           Copy-Item $zlib.FullName "$env:GITHUB_WORKSPACE\opensrc\zlib\lib\x64\zlibstat.lib" -Force
