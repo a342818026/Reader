@@ -67,6 +67,10 @@ typedef struct alpha_dc_info_t
 #define is_hyphen(c)            ((c) == 0x2D /* - */)
 #define is_blank(c)             ((c) == 0x20 || (c) == 0x09 || /*(c) == 0x0A ||*/ (c) == 0x0B || (c) == 0x0C || /*(c) == 0x0D ||*/ (c) == 0x3000 || (c) == 0xA0)
 
+// Cap rendered inline images to a modest height (and reserve the same space
+// during layout) so a large illustration doesn't push following text off-screen.
+#define IMAGE_MAX_HEIGHT        220   // px max height for a rendered inline image
+
 class Page
 {
 public:
