@@ -1,5 +1,7 @@
 #include "EpubBook.h"
 #include "Utils.h"
+#include <stdio.h>
+#include <windows.h>
 #ifdef ZLIB_ENABLE
 #include "unzip.h"
 #include "iowin32.h"
@@ -833,7 +835,11 @@ BOOL EpubBook::ParserOps(file_data_t *fdata, wchar_t **text, int *len, wchar_t *
     int size;
 
     xmlKeepBlanksDefault(0);
-    doc = htmlReadMemory((const char *)fdata->data, fdata->size, NULL, NULL, XML_PARSE_RECOVER | XML_PARSE_NOBLANKS);
+    // Explicit UTF-8: htmlReadMemory with NULL encoding ignores the
+    // <?xml?> declaration and can decode multi-byte text as Latin-1,
+    // which corrupts/drops U+2014 em-dashes (破折号) after the
+    // dump->reparse round-trip below.
+    doc = htmlReadMemory((const char *)fdata->data, fdata->size, NULL, "UTF-8", XML_PARSE_RECOVER | XML_PARSE_NOBLANKS);
     if (!doc)
         goto end;
 
@@ -1239,7 +1245,12 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     // img.path is already resolved against the epub root (see WalkBodyNodes)
     filelist_t::iterator it = m_flist.find(img.path);
     if (it == m_flist.end())
+    {
+        FILE *f = fopen("reader_img_debug.log", "a");
+        if (f) { fprintf(f, "[Reader] image NOT FOUND: '%s' | flist size=%d | epub root='%s'\n",
+                         img.path.c_str(), (int)m_flist.size(), m_EpubPath.c_str()); fclose(f); }
         return NULL;
+    }
     file_data_t *fdata = &(it->second);
     pStream = SHCreateMemStream((const BYTE *)fdata->data, fdata->size);
     if (!pStream)
@@ -1247,6 +1258,10 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(pStream);
     if (!bmp || Gdiplus::Ok != bmp->GetLastStatus())
     {
+        FILE *f = fopen("reader_img_debug.log", "a");
+        if (f) { fprintf(f, "[Reader] DECODE FAIL idx=%d path='%s' status=%d size=%u\n",
+                         index, img.path.c_str(), (int)(bmp ? bmp->GetLastStatus() : -1),
+                         (unsigned)fdata->size); fclose(f); }
         delete bmp;
         pStream->Release();
         return NULL;
@@ -1254,6 +1269,13 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     img.display_w = bmp->GetWidth();
     img.display_h = bmp->GetHeight();
     pStream->Release();
+
+    {
+        FILE *f = fopen("reader_img_debug.log", "a");
+        if (f) { fprintf(f, "[Reader] DECODE OK idx=%d path='%s' %dx%d size=%u\n",
+                         index, img.path.c_str(), img.display_w, img.display_h,
+                         (unsigned)fdata->size); fclose(f); }
+    }
 
     // Cache it for reuse (owned by m_ImageCache, freed in destructor)
     if (index >= (int)m_ImageCache.size())
