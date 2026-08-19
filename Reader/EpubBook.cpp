@@ -714,9 +714,18 @@ BOOL EpubBook::WalkBodyNodes(xmlNode *node, wchar_t **text, int *len)
             return FALSE;
         if (cur->type == XML_TEXT_NODE && cur->content)
         {
+            // Use xmlNodeGetContent() instead of raw cur->content:
+            // htmlDocDumpMemoryFormat serializes U+2014/curly quotes as
+            // numeric entities (&#8212; / &#8220;), and xmlNodeGetContent
+            // decodes those entities back to the real characters. Raw
+            // cur->content can keep the half-decoded/entity form, which
+            // makes em-dashes and quotes vanish on screen (TXT unaffected).
             wchar_t *decoded = NULL;
             int decoded_len = 0;
-            const char *src = (const char*)cur->content;
+            xmlChar *node_content = xmlNodeGetContent(cur);
+            if (!node_content)
+                continue;
+            const char *src = (const char*)node_content;
             int srcsize = (int)strlen(src);
             if (!DecodeText(src, srcsize, &decoded, &decoded_len))
             {
@@ -727,6 +736,7 @@ BOOL EpubBook::WalkBodyNodes(xmlNode *node, wchar_t **text, int *len)
                 AppendText(text, len, decoded, decoded_len);
                 free(decoded);
             }
+            xmlFree(node_content);
         }
         else if (cur->type == XML_ELEMENT_NODE)
         {
