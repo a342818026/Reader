@@ -249,7 +249,11 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
                         // Scale to fit the whole window (both width and height),
                         // keeping aspect ratio, with some margin (85%)
                         int max_draw_w = content_w * 85 / 100;
-                        int max_draw_h = content_h * 85 / 100;
+                        // Cap image height so a large illustration doesn't push
+                        // following text off-screen (matches the layout reserve).
+                        int max_draw_h = IMAGE_MAX_HEIGHT;
+                        if (content_h * 85 / 100 < max_draw_h)
+                            max_draw_h = content_h * 85 / 100;
                         int draw_w = img_w;
                         int draw_h = img_h;
                         if (draw_w > max_draw_w)
@@ -828,6 +832,14 @@ int Page::ParagraphToLines(HDC hdc, int start, int length, int width, int height
     {
         SelectFont(hdc, i, is_title);
         GetTextExtentPoint32(hdc, m_Text + i, 1, &sz);
+        // Reserve layout space for an inline image marker so pagination
+        // accounts for the image height (a marker is 1 char but the image
+        // occupies up to IMAGE_MAX_HEIGHT px on screen).
+        if (m_Text[i] == (wchar_t)IMAGE_MARKER)
+        {
+            sz.cx = 1;                     // negligible width
+            sz.cy = IMAGE_MAX_HEIGHT;      // reserve image height
+        }
         chars[i - start].idx = i;
         chars[i - start].dc_idx = m_dcIndex;
         chars[i - start].cx = sz.cx;
