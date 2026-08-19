@@ -868,7 +868,13 @@ BOOL EpubBook::ParserOps(file_data_t *fdata, wchar_t **text, int *len, wchar_t *
     }
     
     xmlKeepBlanksDefault(1);
-    doc = xmlReadMemory((const char *)format_str, size, NULL, NULL, XML_PARSE_RECOVER/* | XML_PARSE_NOBLANKS*/);
+    // Use htmlReadMemory (HTML mode), NOT xmlReadMemory (XML mode), to
+    // reparse the dumped HTML. htmlDocDumpMemoryFormat emits HTML *named*
+    // entities (&ldquo;/&rdquo;/&mdash;/&hellip;) for U+2014/U+201C/etc.
+    // XML mode leaves those as ENTITY_REF nodes with content=NULL, which
+    // WalkBodyNodes (text-node only) then drops -> em-dashes/quotes vanish.
+    // HTML mode decodes them back into real characters in TEXT nodes.
+    doc = htmlReadMemory((const char *)format_str, size, NULL, "UTF-8", XML_PARSE_RECOVER/* | XML_PARSE_NOBLANKS*/);
     xmlFree(format_str);
     if (!doc)
         goto end;
