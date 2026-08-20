@@ -750,6 +750,22 @@ BOOL EpubBook::WalkBodyNodes(xmlNode *node, wchar_t **text, int *len)
             }
             if (strcmp(tag, "img") == 0)
             {
+                // Skip inline images that are comment/footnote/link icons:
+                //  (a) the <img> carries a non-empty class (e.g. duokan-footnote)
+                //  (b) the <img> is wrapped in an <a>/anchored link
+                // Real body illustrations carry no class and no anchor.
+                BOOL skip_link_icon = FALSE;
+                xmlChar *cls = xmlGetProp(cur, (const xmlChar*)"class");
+                if (cls && ((const char*)cls)[0] != '\0')
+                    skip_link_icon = TRUE;
+                if (cls)
+                    xmlFree(cls);
+                if (!skip_link_icon && cur->parent &&
+                    cur->parent->type == XML_ELEMENT_NODE && cur->parent->name &&
+                    xmlStrcmp(cur->parent->name, (const xmlChar*)"a") == 0)
+                    skip_link_icon = TRUE;
+                if (skip_link_icon)
+                    continue;   // don't render/record link/comment icons
                 xmlChar *src = xmlGetProp(cur, (const xmlChar*)"src");
                 if (src)
                 {
