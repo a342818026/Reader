@@ -846,12 +846,21 @@ int Page::ParagraphToLines(HDC hdc, int start, int length, int width, int height
         SelectFont(hdc, i, is_title);
         GetTextExtentPoint32(hdc, m_Text + i, 1, &sz);
         // Reserve layout space for an inline image marker so pagination
-        // accounts for the image height (a marker is 1 char but the image
-        // occupies up to IMAGE_MAX_HEIGHT px on screen).
+        // accounts for the image height. Only reserve when inline images are
+        // enabled; otherwise the marker is an invisible zero-height char so
+        // no blank space is left when images are turned off.
         if (m_Text[i] == (wchar_t)IMAGE_MARKER)
         {
-            sz.cx = 1;                     // negligible width
-            sz.cy = IMAGE_MAX_HEIGHT;      // reserve image height
+            if (m_header && m_header->show_inline_img)
+            {
+                sz.cx = 1;                     // negligible width
+                sz.cy = IMAGE_MAX_HEIGHT;      // reserve image height
+            }
+            else
+            {
+                sz.cx = 1;
+                sz.cy = 1;                     // invisible when images disabled
+            }
         }
         chars[i - start].idx = i;
         chars[i - start].dc_idx = m_dcIndex;
