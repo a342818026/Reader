@@ -1278,9 +1278,6 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     filelist_t::iterator it = m_flist.find(img.path);
     if (it == m_flist.end())
     {
-        FILE *f = fopen("reader_img_debug.log", "a");
-        if (f) { fprintf(f, "[Reader] image NOT FOUND: '%s' | flist size=%d | epub root='%s'\n",
-                         img.path.c_str(), (int)m_flist.size(), m_EpubPath.c_str()); fclose(f); }
         return NULL;
     }
     file_data_t *fdata = &(it->second);
@@ -1290,10 +1287,6 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(pStream);
     if (!bmp || Gdiplus::Ok != bmp->GetLastStatus())
     {
-        FILE *f = fopen("reader_img_debug.log", "a");
-        if (f) { fprintf(f, "[Reader] DECODE FAIL idx=%d path='%s' status=%d size=%u\n",
-                         index, img.path.c_str(), (int)(bmp ? bmp->GetLastStatus() : -1),
-                         (unsigned)fdata->size); fclose(f); }
         delete bmp;
         pStream->Release();
         return NULL;
@@ -1301,13 +1294,6 @@ Gdiplus::Bitmap* EpubBook::DecodeImage(int index)
     img.display_w = bmp->GetWidth();
     img.display_h = bmp->GetHeight();
     pStream->Release();
-
-    {
-        FILE *f = fopen("reader_img_debug.log", "a");
-        if (f) { fprintf(f, "[Reader] DECODE OK idx=%d path='%s' %dx%d size=%u\n",
-                         index, img.path.c_str(), img.display_w, img.display_h,
-                         (unsigned)fdata->size); fclose(f); }
-    }
 
     // Cache it for reuse (owned by m_ImageCache, freed in destructor)
     if (index >= (int)m_ImageCache.size())
