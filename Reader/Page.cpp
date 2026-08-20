@@ -251,16 +251,11 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
                         // Scale to fit the whole window (both width and height),
                         // keeping aspect ratio, with some margin (85%)
                         int max_draw_w = content_w * 85 / 100;
-                        // Cap image height so a large illustration doesn't push
-                        // following text off-screen (matches the layout reserve).
-                        int max_draw_h = IMAGE_MAX_HEIGHT;
-                        if (content_h * 85 / 100 < max_draw_h)
-                            max_draw_h = content_h * 85 / 100;
+                        int max_draw_h = content_h * 85 / 100;
                         int draw_w = img_w;
                         int draw_h = img_h;
-                        // Single uniform scale so both limits hold at once —
-                        // avoids double-shrinking (width then height) that made
-                        // images tiny while leaving the layout reserve empty.
+                        // Single uniform scale so both limits hold at once,
+                        // keeping aspect ratio
                         double scale = 1.0;
                         if (draw_w > max_draw_w)
                             scale = (double)max_draw_w / draw_w;
@@ -845,22 +840,15 @@ int Page::ParagraphToLines(HDC hdc, int start, int length, int width, int height
     {
         SelectFont(hdc, i, is_title);
         GetTextExtentPoint32(hdc, m_Text + i, 1, &sz);
-        // Reserve layout space for an inline image marker so pagination
-        // accounts for the image height. Only reserve when inline images are
-        // enabled; otherwise the marker is an invisible zero-height char so
-        // no blank space is left when images are turned off.
+        // Reserve only a 1px placeholder for an inline image marker during
+        // layout. The image itself is drawn at adaptive-window size (computed
+        // in DrawPage). A 1px placeholder keeps consecutive images from
+        // collapsing together without reserving a large fixed height that
+        // would leave blank space.
         if (m_Text[i] == (wchar_t)IMAGE_MARKER)
         {
-            if (m_header && m_header->show_inline_img)
-            {
-                sz.cx = 1;                     // negligible width
-                sz.cy = IMAGE_MAX_HEIGHT;      // reserve image height
-            }
-            else
-            {
-                sz.cx = 1;
-                sz.cy = 1;                     // invisible when images disabled
-            }
+            sz.cx = 1;   // negligible width
+            sz.cy = 1;   // 1px placeholder
         }
         chars[i - start].idx = i;
         chars[i - start].dc_idx = m_dcIndex;
