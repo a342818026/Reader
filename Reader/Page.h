@@ -69,7 +69,7 @@ typedef struct alpha_dc_info_t
 
 // Cap rendered inline images to a modest height (and reserve the same space
 // during layout) so a large illustration doesn't push following text off-screen.
-#define IMAGE_MAX_HEIGHT        220   // px max height for a rendered inline image
+#define IMAGE_MAX_HEIGHT        300   // px max height for a rendered inline image
 
 class Page
 {
