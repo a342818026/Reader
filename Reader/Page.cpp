@@ -248,14 +248,14 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
                     {
                         int content_w = (rc->right - rc->left) - LEFT_MIN - RIGHT_MIN;
                         int content_h = (rc->bottom - rc->top) - TOP_MIN - BOTTOM_MIN;
-                        // Scale to fit the whole window (both width and height),
-                        // keeping aspect ratio, with some margin (85%)
+                        // Fixed image height (300px); width keeps aspect ratio.
+                        const int IMG_FIXED_H = 300;
                         int max_draw_w = content_w * 85 / 100;
-                        int max_draw_h = content_h * 85 / 100;
+                        int max_draw_h = IMG_FIXED_H;
                         int draw_w = img_w;
                         int draw_h = img_h;
-                        // Single uniform scale so both limits hold at once,
-                        // keeping aspect ratio
+                        // Single uniform scale so the fixed height holds while
+                        // width stays within the window, keeping aspect ratio
                         double scale = 1.0;
                         if (draw_w > max_draw_w)
                             scale = (double)max_draw_w / draw_w;
