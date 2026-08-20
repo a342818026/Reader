@@ -256,15 +256,21 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
                             max_draw_h = content_h * 85 / 100;
                         int draw_w = img_w;
                         int draw_h = img_h;
+                        // Single uniform scale so both limits hold at once —
+                        // avoids double-shrinking (width then height) that made
+                        // images tiny while leaving the layout reserve empty.
+                        double scale = 1.0;
                         if (draw_w > max_draw_w)
-                        {
-                            draw_h = draw_h * max_draw_w / draw_w;
-                            draw_w = max_draw_w;
-                        }
+                            scale = (double)max_draw_w / draw_w;
+                        double scale_h = 1.0;
                         if (draw_h > max_draw_h)
+                            scale_h = (double)max_draw_h / draw_h;
+                        if (scale_h < scale)
+                            scale = scale_h;
+                        if (scale < 1.0)
                         {
-                            draw_w = draw_w * max_draw_h / draw_h;
-                            draw_h = max_draw_h;
+                            draw_w = (int)(draw_w * scale + 0.5);
+                            draw_h = (int)(draw_h * scale + 0.5);
                         }
                         // Center the image horizontally
                         int img_x = LEFT_MIN + (content_w - draw_w) / 2;
