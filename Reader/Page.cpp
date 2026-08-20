@@ -271,11 +271,6 @@ void Page::DrawPage(HWND hWnd, HDC hdc, RECT* rc, BOOL enable_alpha)
                         }
                         // Center the image horizontally
                         int img_x = LEFT_MIN + (content_w - draw_w) / 2;
-                        {
-                            FILE *f = fopen("reader_img_debug.log", "a");
-                            if (f) { fprintf(f, "[Reader] RENDER idx=%d %dx%d -> draw %dx%d (y=%d)\n",
-                                             img_idx, img_w, img_h, draw_w, draw_h, y); fclose(f); }
-                        }
                         Gdiplus::Graphics graphics(hdc);
                         graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
                         graphics.DrawImage(bmp, img_x, y, draw_w, draw_h);
